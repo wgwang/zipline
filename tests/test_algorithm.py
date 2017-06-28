@@ -4359,13 +4359,11 @@ class TestEquityAutoClose(WithTradingEnvironment, WithTmpDir, ZiplineTestCase):
             )
 
         # Check expected cash.
-        self.assertEqual(algo.cash, expected_cash)
         self.assertEqual(expected_cash, list(output['ending_cash']))
 
         # Check expected long/short counts.
         # We have longs if order_size > 0.
-        # We have shrots if order_size > 0.
-        self.assertEqual(algo.num_positions, expected_num_positions)
+        # We have shorts if order_size < 0.
         if order_size > 0:
             self.assertEqual(
                 expected_num_positions,
@@ -4422,8 +4420,10 @@ class TestEquityAutoClose(WithTradingEnvironment, WithTmpDir, ZiplineTestCase):
             first_auto_close_transaction,
             {
                 'amount': -order_size,
-                'commission': 0.0,
-                'dt': assets[0].auto_close_date,
+                'commission': 0,
+                'dt': self.trading_calendar.open_and_close_for_session(
+                    assets[0].auto_close_date,
+                )[1],
                 'price': fp0,
                 'sid': assets[0],
                 'order_id': None,  # Auto-close txns emit Nones for order_id.
@@ -4437,8 +4437,10 @@ class TestEquityAutoClose(WithTradingEnvironment, WithTmpDir, ZiplineTestCase):
             second_auto_close_transaction,
             {
                 'amount': -order_size,
-                'commission': 0.0,
-                'dt': assets[1].auto_close_date,
+                'commission': 0,
+                'dt': self.trading_calendar.open_and_close_for_session(
+                    assets[1].auto_close_date,
+                )[1],
                 'price': fp1,
                 'sid': assets[1],
                 'order_id': None,  # Auto-close txns emit Nones for order_id.
@@ -4451,7 +4453,7 @@ class TestEquityAutoClose(WithTradingEnvironment, WithTmpDir, ZiplineTestCase):
         canceled.  Unless an equity is auto closed, any open orders for that
         equity will persist indefinitely.
         """
-        auto_close_delta = self.trading_calendar.day
+        auto_close_delta = trading_day = self.trading_calendar.day
         resources = self.make_data(auto_close_delta, 'daily')
         env = resources.env
         assets = resources.assets
@@ -4479,6 +4481,8 @@ class TestEquityAutoClose(WithTradingEnvironment, WithTmpDir, ZiplineTestCase):
                 context.order(context.sid(0), 10)
                 assert len(context.get_open_orders()) == 1
             elif today_session == first_asset_auto_close_date:
+                assert len(context.get_open_orders()) == 1
+            elif today_session == first_asset_auto_close_date + trading_day:
                 assert len(context.get_open_orders()) == 0
 
         algo = TradingAlgorithm(
@@ -4522,7 +4526,9 @@ class TestEquityAutoClose(WithTradingEnvironment, WithTmpDir, ZiplineTestCase):
                 'amount': 10,
                 'commission': 0,
                 'created': last_close_for_asset,
-                'dt': first_asset_auto_close_date,
+                'dt': algo.trading_calendar.open_and_close_for_session(
+                    first_asset_auto_close_date,
+                )[1],
                 'sid': assets[0],
                 'status': ORDER_STATUS.CANCELLED,
                 'filled': 0,
@@ -4566,18 +4572,18 @@ class TestEquityAutoClose(WithTradingEnvironment, WithTmpDir, ZiplineTestCase):
         expected_cash = [initial_cash]
         expected_position_counts = [0]
 
-        # We have the rest of the first sim day, plus the second and third
-        # days' worth of minutes with cash spent.
-        expected_cash.extend([after_fills] * (389 + 390 + 390))
-        expected_position_counts.extend([3] * (389 + 390 + 390))
+        # We have the rest of the first sim day, plus the second, third and
+        # fourth days' worth of minutes with cash spent.
+        expected_cash.extend([after_fills] * (389 + 390 + 390 + 390))
+        expected_position_counts.extend([3] * (389 + 390 + 390 + 390))
 
         # We then have two days with the cash refunded from asset 0.
         expected_cash.extend([after_first_auto_close] * (390 + 390))
         expected_position_counts.extend([2] * (390 + 390))
 
-        # We then have two days with cash refunded from asset 1
-        expected_cash.extend([after_second_auto_close] * (390 + 390))
-        expected_position_counts.extend([1] * (390 + 390))
+        # We then have one day with cash refunded from asset 1.
+        expected_cash.extend([after_second_auto_close] * 390)
+        expected_position_counts.extend([1] * 390)
 
         # Check list lengths first to avoid expensive comparison
         self.assertEqual(len(algo.cash), len(expected_cash))
@@ -4638,7 +4644,9 @@ class TestEquityAutoClose(WithTradingEnvironment, WithTmpDir, ZiplineTestCase):
             {
                 'amount': -order_size,
                 'commission': 0.0,
-                'dt': assets[0].auto_close_date,
+                'dt': algo.trading_calendar.open_and_close_for_session(
+                    assets[0].auto_close_date,
+                )[1],
                 'price': fp0,
                 'sid': assets[0],
                 'order_id': None,  # Auto-close txns emit Nones for order_id.
@@ -4653,7 +4661,9 @@ class TestEquityAutoClose(WithTradingEnvironment, WithTmpDir, ZiplineTestCase):
             {
                 'amount': -order_size,
                 'commission': 0.0,
-                'dt': assets[1].auto_close_date,
+                'dt': algo.trading_calendar.open_and_close_for_session(
+                    assets[1].auto_close_date,
+                )[1],
                 'price': fp1,
                 'sid': assets[1],
                 'order_id': None,  # Auto-close txns emit Nones for order_id.
