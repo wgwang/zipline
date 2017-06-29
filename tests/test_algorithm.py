@@ -490,7 +490,7 @@ def log_nyse_close(context, data):
         for minute in algo.nyse_closes:
             # each minute should be a minute before a nyse session close
             session_label = nyse.minute_to_session_label(minute)
-            session_close = nyse.session_close(session_label)[1]
+            session_close = nyse.session_close(session_label)
             self.assertEqual(session_close - timedelta(minutes=1), minute)
 
         # Test that passing an invalid calendar parameter raises an error.
@@ -4449,7 +4449,7 @@ class TestEquityAutoClose(WithTradingEnvironment, WithTmpDir, ZiplineTestCase):
         canceled.  Unless an equity is auto closed, any open orders for that
         equity will persist indefinitely.
         """
-        auto_close_delta = trading_day = self.trading_calendar.day
+        auto_close_delta = self.trading_calendar.day
         resources = self.make_data(auto_close_delta, 'daily')
         env = resources.env
         assets = resources.assets
@@ -4469,7 +4469,7 @@ class TestEquityAutoClose(WithTradingEnvironment, WithTmpDir, ZiplineTestCase):
             today_session = self.trading_calendar.minute_to_session_label(
                 context.get_datetime()
             )
-            day_after_auto_close = self.trading_calendar.next_session(
+            day_after_auto_close = self.trading_calendar.next_session_label(
                 first_asset_auto_close_date,
             )
 

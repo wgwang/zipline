@@ -282,6 +282,9 @@ class AlgorithmSimulator(object):
         ]
         for asset in assets_to_cancel:
             blotter.cancel_all_orders_for_asset(asset)
+
+        # Make a copy here so that we are not modifying the list that is being
+        # iterated over.
         for order in copy(blotter.new_orders):
             if order.status == ORDER_STATUS.CANCELLED:
                 perf_tracker.process_order(order)
