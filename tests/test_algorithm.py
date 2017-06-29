@@ -484,13 +484,13 @@ def log_nyse_close(context, data):
         for minute in algo.nyse_opens:
             # each minute should be a nyse session open
             session_label = nyse.minute_to_session_label(minute)
-            session_open = nyse.open_and_close_for_session(session_label)[0]
+            session_open = nyse.session_open(session_label)
             self.assertEqual(session_open, minute)
 
         for minute in algo.nyse_closes:
             # each minute should be a minute before a nyse session close
             session_label = nyse.minute_to_session_label(minute)
-            session_close = nyse.open_and_close_for_session(session_label)[1]
+            session_close = nyse.session_close(session_label)[1]
             self.assertEqual(session_close - timedelta(minutes=1), minute)
 
         # Test that passing an invalid calendar parameter raises an error.
@@ -4212,9 +4212,7 @@ class TestEquityAutoClose(WithTradingEnvironment, WithTmpDir, ZiplineTestCase):
         else:
             final_prices = {
                 asset.sid: trade_data_by_sid[asset.sid].loc[
-                    self.trading_calendar.open_and_close_for_session(
-                        asset.end_date
-                    )[1]
+                    self.trading_calendar.session_close(asset.end_date)
                 ].close
                 for asset in assets
             }
@@ -4390,9 +4388,7 @@ class TestEquityAutoClose(WithTradingEnvironment, WithTmpDir, ZiplineTestCase):
         self.assertEqual(len(initial_fills), len(assets))
 
         last_minute_of_session = \
-            self.trading_calendar.open_and_close_for_session(
-                self.test_days[1]
-            )[1]
+            self.trading_calendar.session_close(self.test_days[1])
 
         for asset, txn in zip(assets, initial_fills):
             self.assertDictContainsSubset(
@@ -4421,9 +4417,9 @@ class TestEquityAutoClose(WithTradingEnvironment, WithTmpDir, ZiplineTestCase):
             {
                 'amount': -order_size,
                 'commission': 0.0,
-                'dt': self.trading_calendar.open_and_close_for_session(
+                'dt': self.trading_calendar.session_close(
                     assets[0].auto_close_date,
-                )[1],
+                ),
                 'price': fp0,
                 'sid': assets[0],
                 'order_id': None,  # Auto-close txns emit Nones for order_id.
@@ -4438,9 +4434,9 @@ class TestEquityAutoClose(WithTradingEnvironment, WithTmpDir, ZiplineTestCase):
             {
                 'amount': -order_size,
                 'commission': 0.0,
-                'dt': self.trading_calendar.open_and_close_for_session(
+                'dt': self.trading_calendar.session_close(
                     assets[1].auto_close_date,
-                )[1],
+                ),
                 'price': fp1,
                 'sid': assets[1],
                 'order_id': None,  # Auto-close txns emit Nones for order_id.
@@ -4473,6 +4469,9 @@ class TestEquityAutoClose(WithTradingEnvironment, WithTmpDir, ZiplineTestCase):
             today_session = self.trading_calendar.minute_to_session_label(
                 context.get_datetime()
             )
+            day_after_auto_close = self.trading_calendar.next_session(
+                first_asset_auto_close_date,
+            )
 
             if today_session == first_asset_end_date:
                 # Equity 0 will no longer exist tomorrow, so this order will
@@ -4484,7 +4483,7 @@ class TestEquityAutoClose(WithTradingEnvironment, WithTmpDir, ZiplineTestCase):
                 # We do not cancel open orders until the end of the auto close
                 # date, so our open order should still exist at this point.
                 assert len(context.get_open_orders()) == 1
-            elif today_session == first_asset_auto_close_date + trading_day:
+            elif today_session == day_after_auto_close:
                 assert len(context.get_open_orders()) == 0
 
         algo = TradingAlgorithm(
@@ -4504,9 +4503,7 @@ class TestEquityAutoClose(WithTradingEnvironment, WithTmpDir, ZiplineTestCase):
         assert len(original_open_orders) == 1
 
         last_close_for_asset = \
-            algo.trading_calendar.open_and_close_for_session(
-                first_asset_end_date
-            )[1]
+            algo.trading_calendar.session_close(first_asset_end_date)
 
         self.assertDictContainsSubset(
             {
@@ -4528,9 +4525,9 @@ class TestEquityAutoClose(WithTradingEnvironment, WithTmpDir, ZiplineTestCase):
                 'amount': 10,
                 'commission': 0,
                 'created': last_close_for_asset,
-                'dt': algo.trading_calendar.open_and_close_for_session(
+                'dt': algo.trading_calendar.session_close(
                     first_asset_auto_close_date,
-                )[1],
+                ),
                 'sid': assets[0],
                 'status': ORDER_STATUS.CANCELLED,
                 'filled': 0,
@@ -4646,9 +4643,9 @@ class TestEquityAutoClose(WithTradingEnvironment, WithTmpDir, ZiplineTestCase):
             {
                 'amount': -order_size,
                 'commission': 0.0,
-                'dt': algo.trading_calendar.open_and_close_for_session(
+                'dt': algo.trading_calendar.session_close(
                     assets[0].auto_close_date,
-                )[1],
+                ),
                 'price': fp0,
                 'sid': assets[0],
                 'order_id': None,  # Auto-close txns emit Nones for order_id.
@@ -4663,9 +4660,9 @@ class TestEquityAutoClose(WithTradingEnvironment, WithTmpDir, ZiplineTestCase):
             {
                 'amount': -order_size,
                 'commission': 0.0,
-                'dt': algo.trading_calendar.open_and_close_for_session(
+                'dt': algo.trading_calendar.session_close(
                     assets[1].auto_close_date,
-                )[1],
+                ),
                 'price': fp1,
                 'sid': assets[1],
                 'order_id': None,  # Auto-close txns emit Nones for order_id.
