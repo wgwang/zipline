@@ -103,6 +103,11 @@ class BcolzMinuteBarTestCase(WithTradingCalendars,
             BcolzMinuteBarMetadata.FORMAT_VERSION,
         )
 
+    def test_no_minute_bars_for_sid(self):
+        minute = self.market_opens[self.test_calendar_start]
+        with self.assertRaises(NoDataOnDate):
+            self.reader.get_value(1337, minute, 'close')
+
     def test_write_one_ohlcv(self):
         minute = self.market_opens[self.test_calendar_start]
         sid = 1

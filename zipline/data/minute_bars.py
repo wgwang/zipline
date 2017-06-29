@@ -1057,9 +1057,13 @@ class BcolzMinuteBarReader(MinuteBarReader):
         try:
             carray = self._carrays[field][sid]
         except KeyError:
-            carray = self._carrays[field][sid] = \
-                bcolz.carray(rootdir=self._get_carray_path(sid, field),
-                             mode='r')
+            try:
+                carray = self._carrays[field][sid] = bcolz.carray(
+                    rootdir=self._get_carray_path(sid, field),
+                    mode='r',
+                )
+            except IOError:
+                raise NoDataOnDate('No minute data for sid {}.'.format(sid))
 
         return carray
 
