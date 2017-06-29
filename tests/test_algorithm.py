@@ -4481,6 +4481,8 @@ class TestEquityAutoClose(WithTradingEnvironment, WithTmpDir, ZiplineTestCase):
                 context.order(context.sid(0), 10)
                 assert len(context.get_open_orders()) == 1
             elif today_session == first_asset_auto_close_date:
+                # We do not cancel open orders until the end of the auto close
+                # date, so our open order should still exist at this point.
                 assert len(context.get_open_orders()) == 1
             elif today_session == first_asset_auto_close_date + trading_day:
                 assert len(context.get_open_orders()) == 0

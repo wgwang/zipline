@@ -224,6 +224,9 @@ class AlgorithmSimulator(object):
                     if emission_rate == 'daily':
                         handle_benchmark(normalize_date(dt))
                     else:
+                        # If the emission rate is minutely then the performance
+                        # update already happened by this point, so if any
+                        # equities were just auto closed do another update.
                         perf_tracker.update_performance()
                     execute_order_cancellation_policy()
 
@@ -269,12 +272,10 @@ class AlgorithmSimulator(object):
         for asset in assets_to_clear:
             perf_tracker.process_close_position(asset, dt, data_portal)
 
-        # Remove open orders for any sids that have reached their
-        # auto_close_date.
+        # Remove open orders for any sids that have reached their auto close
+        # date. These orders get processed immediately because otherwise they
+        # would not be processed until the first bar of the next day.
         blotter = algo.blotter
-        assets_to_cancel = \
-            set([asset for asset in blotter.open_orders
-                 if past_auto_close_date(asset)])
         assets_to_cancel = [
             asset for asset in blotter.open_orders
             if past_auto_close_date(asset)
