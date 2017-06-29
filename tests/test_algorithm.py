@@ -4420,7 +4420,7 @@ class TestEquityAutoClose(WithTradingEnvironment, WithTmpDir, ZiplineTestCase):
             first_auto_close_transaction,
             {
                 'amount': -order_size,
-                'commission': 0,
+                'commission': 0.0,
                 'dt': self.trading_calendar.open_and_close_for_session(
                     assets[0].auto_close_date,
                 )[1],
@@ -4437,7 +4437,7 @@ class TestEquityAutoClose(WithTradingEnvironment, WithTmpDir, ZiplineTestCase):
             second_auto_close_transaction,
             {
                 'amount': -order_size,
-                'commission': 0,
+                'commission': 0.0,
                 'dt': self.trading_calendar.open_and_close_for_session(
                     assets[1].auto_close_date,
                 )[1],
